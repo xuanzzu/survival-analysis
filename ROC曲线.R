@@ -1,4 +1,4 @@
-setwd("E://脊索瘤预后预测模型//结果//家琦分析结果//随机筛选指标结果//手术入路 + 斜坡部位 + degree_of_resection    蛋白：e_cad_cyto + Ki_67_2_n + VEGFA_cyto VEGFAp值更小//PFS")
+setwd()
 library(survival)
 library(timeROC)
 traindata<-read.table("trainData.csv",header = T,sep=",")
