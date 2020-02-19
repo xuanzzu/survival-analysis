@@ -1,14 +1,14 @@
-setwd("I://¼¹Ë÷ÁöÔ¤ºóÔ¤²âÄ£ĞÍ//½á¹û//¼Òçù·ÖÎö½á¹û//Ëæ»úÉ¸Ñ¡Ö¸±ê½á¹û//ÊÖÊõÈëÂ· + Ğ±ÆÂ²¿Î» + degree_of_resection    µ°°×£ºe_cad_cyto + Ki_67_2_n + VEGFA_cyto VEGFApÖµ¸üĞ¡//PFS")
-#¶ÁÈ¡Êı¾İ
+setwd()
+#è¯»å–æ•°æ®
 traindata<-read.table("trainData.csv",header = T,sep=",")
 library(survival)
 library(rms)
 library(plyr)
-#1 ½¨Á¢Éú´æ¶ÔÏó
+#1 å»ºç«‹ç”Ÿå­˜å¯¹è±¡
 y<-Surv(traindata$PFS,traindata$PFS_event==1)
-#2 µ¥ÒòËØCOX»Ø¹é
-#2.1 Ã¿´ÎÖ»×öÒ»¸öÒòËØµÄCOX»Ø¹é
-unicox<-coxph(y~ÄêÁä,data = traindata)
+#2 å•å› ç´ COXå›å½’
+#2.1 æ¯æ¬¡åªåšä¸€ä¸ªå› ç´ çš„COXå›å½’
+unicox<-coxph(y~å¹´é¾„,data = traindata)
 unicox.sum<-summary(unicox)
 CI<-paste0(round(unicox.sum$conf.int[,3:4],2),collapse = "-")
 HR<-round(unicox.sum$coefficients[,2],2)
@@ -17,7 +17,7 @@ unicox.result<-data.frame("characteristics"="Age",
                           "Hazard Ratio"=HR,
                           "CI95"=CI,
                           "P value"=Pvalue)
-#2.2 ÅúÁ¿×öÃ¿¸öÒòËØµÄCOX»Ø¹é
+#2.2 æ‰¹é‡åšæ¯ä¸ªå› ç´ çš„COXå›å½’
 Unicox.result<-function(x){
   FML<-as.formula(paste0("y~",x))
   unicox<-coxph(FML,ties=c("breslow"),data = traindata)
@@ -34,12 +34,12 @@ Unicox.result<-function(x){
 VarNames<-colnames(traindata)[c(3:18,24:83)]
 Univar<-lapply(VarNames,Unicox.result)
 Univar<-ldply(Univar,data.frame)
-#3 ¶àÒòËØCOX»Ø¹é
-#3.1 É¸Ñ¡µ¥ÒòËØpĞ¡ÓÚ0.05µÄ±äÁ¿
+#3 å¤šå› ç´ COXå›å½’
+#3.1 ç­›é€‰å•å› ç´ på°äº0.05çš„å˜é‡
 f<-Univar$characteristics[Univar$P.value<0.05]
 fml1<-as.formula(paste0("y~",paste0(f[c(3,4,6)],collapse = "+")))
 fml2<-as.formula(paste0("y~",paste0(f[8:15],collapse = "+")))
-#3.2 ¶àÒòËØCOX»Ø¹é
+#3.2 å¤šå› ç´ COXå›å½’
 MultiCox<-coxph(fml1,ties=c("breslow"),data = traindata)
 MultiStep<-step(MultiCox,direction = "backward")
 MultiSum<-summary(step(MultiCox,direction = "backward"))
@@ -47,23 +47,23 @@ MultiSum<-summary(step(MultiCox,direction = "backward"))
 MultiCox.biomarker<-coxph(fml2,ties=c("breslow"),data = traindata)
 MultiStep.biomarker<-step(MultiCox.biomarker,direction = "backward")
 
-#3.3 ×îÖÕÄ£ĞÍ
+#3.3 æœ€ç»ˆæ¨¡å‹
 MultiCox.final<-coxph(y~ degree_of_resection + e_cad_cyto + Ki_67_2_n + VEGFA_cyto,ties = c("breslow"),
                       data = traindata)
 
-#4 »æÖÆÁĞÏßÍ¼
-#4.1 ¶àÒòËØCOX»Ø¹é£¨»æÖÆÁĞÏßÍ¼ÓÃ£©
+#4 ç»˜åˆ¶åˆ—çº¿å›¾
+#4.1 å¤šå› ç´ COXå›å½’ï¼ˆç»˜åˆ¶åˆ—çº¿å›¾ç”¨ï¼‰
 MultiCox.nomogram<-cph(y~degree_of_resection + e_cad_cyto + Ki_67_2_n + VEGFA_cyto,method = c("breslow"),
                        data = traindata,x=T,y=T,surv=T)
 MultiCox2<-cph(y~degree_of_resection + e_cad_cyto + Ki_67_2_n + VEGFA_cyto,data=traindata,x=T,y=T,surv=T)
 MultiStep2<-step(MultiCox2,direction = "backward")
 MultiSum2<-summary(step(MultiCox2,direction = "backward"))
-#4.2 Êı¾İ´ò°ü
+#4.2 æ•°æ®æ‰“åŒ…
 dd<-datadist(traindata)
 options(datadist = "dd")
-#4.3 Éú³Éº¯Êı
+#4.3 ç”Ÿæˆå‡½æ•°
 surv<-Survival(MultiCox.nomogram)
-#4.4 ½¨Á¢nomogram
+#4.4 å»ºç«‹nomogram
 surv1<-function(x)surv(3*12,lp=x)
 surv2<-function(x)surv(5*12,lp=x)
 nom<-nomogram(MultiCox.nomogram,fun=list(surv1,surv2),lp=F,
@@ -72,11 +72,11 @@ nom<-nomogram(MultiCox.nomogram,fun=list(surv1,surv2),lp=F,
               fun.at = c(0.95,0.9,0.8,0.6,0.4,0.2,0.05))
 plot(nom)
 
-#5 ÄÚ²¿ÑéÖ¤
-#5.1 Çø·Ö¶È£¨discrimination£©¡£¼ÆËãCÖ¸Êı£¨C-index=1-C£©
+#5 å†…éƒ¨éªŒè¯
+#5.1 åŒºåˆ†åº¦ï¼ˆdiscriminationï¼‰ã€‚è®¡ç®—CæŒ‡æ•°ï¼ˆC-index=1-Cï¼‰
 validate(MultiCox.nomogram,method = "boot",B=1000,dxy = T)
 rcorrcens(y~predict(MultiCox.nomogram),data = traindata)
-#5.2 Ò»ÖÂĞÔ£¨calibration£©
+#5.2 ä¸€è‡´æ€§ï¼ˆcalibrationï¼‰
 #5.2.1 3-year progression-free survival calibartion curve
 f3<-cph(y~degree_of_resection + e_cad_cyto + Ki_67_2_n + VEGFA_cyto,method = c("breslow"),
         data = traindata,x=T,y=T,surv=T,time.inc = 36)
@@ -88,15 +88,15 @@ f5<-cph(y~degree_of_resection + e_cad_cyto + Ki_67_2_n + VEGFA_cyto,method = c("
 cal5<-calibrate(f5,cmethod = "KM",method = "boot",u=60,m=50,B=1000)
 plot(cal5,xlab = "Predicted 60 months survival", ylab = "Fraction surviving 60 months")
 
-#6 Íâ²¿ÑéÖ¤
+#6 å¤–éƒ¨éªŒè¯
 testdata<-read.table("testData.csv",header = T,sep=",")
-#6.1 Çø·Ö¶È£¨discrimination£©
+#6.1 åŒºåˆ†åº¦ï¼ˆdiscriminationï¼‰
 ftest<-cph(Surv(PFS,PFS_event)~predict(MultiCox.nomogram,newdata = testdata),method = c("breslow"),
            x=T,y=T,surv=T,data = testdata)
 validate(ftest,method = "boot",B=1000,dxy = T)
 rcorrcens(Surv(PFS,PFS_event)~predict(MultiCox.nomogram,newdata = testdata),
           data = testdata)
-#6.2 Ò»ÖÂĞÔ£¨calibration£©
+#6.2 ä¸€è‡´æ€§ï¼ˆcalibrationï¼‰
 #6.2.1 3-year overall survival calibartion curve
 ftest3<-cph(Surv(PFS,PFS_event)~predict(MultiCox.nomogram,newdata = testdata),method = c("breslow"),
             x=T,y=T,surv=T,data = testdata,time.inc = 36)
@@ -108,25 +108,25 @@ ftest5<-cph(Surv(PFS,PFS_event)~predict(MultiCox.nomogram,newdata = testdata),me
 caltest5<-calibrate(ftest5,cmethod = "KM",method = "boot",u=60,m=16,B=1000)
 plot(caltest5,xlab = "Predicted 60 months survival", ylab = "Fraction surviving 60 months")
 
-#7 ¼ÆËãÃ¿¸ö»¼ÕßÆÀ·Ö
+#7 è®¡ç®—æ¯ä¸ªæ‚£è€…è¯„åˆ†
 Total_Points<-(traindata$degree_of_resection-1)*28.1512+(traindata$e_cad_cyto-60)*0.9090909+traindata$Ki_67_2_n*1.396713+(traindata$VEGFA_cyto-40)*0.1091895
 traindata$Total_Points<-Total_Points
 
 Total_Points_testdata<-(testdata$degree_of_resection-1)*28.1512+(testdata$e_cad_cyto-60)*0.9090909+testdata$Ki_67_2_n*1.396713+(testdata$VEGFA_cyto-40)*0.1091895
 testdata$Total_Points<-Total_Points_testdata
-#7.1 ¶Ô±ÈµÍ·çÏÕ×éºÍ¸ß·çÏÕ×éPFS
+#7.1 å¯¹æ¯”ä½é£é™©ç»„å’Œé«˜é£é™©ç»„PFS
 traindata_with_points<-read.table("traindata with points.csv",header = T,sep=",")
-KM<-survfit(Surv(PFS,PFS_event)~Total_Points¶ş·ÖÀà,data=traindata_with_points)
-KMdiff<-survdiff(Surv(PFS,PFS_event==1)~Total_Points¶ş·ÖÀà,data=traindata_with_points)
+KM<-survfit(Surv(PFS,PFS_event)~Total_PointsäºŒåˆ†ç±»,data=traindata_with_points)
+KMdiff<-survdiff(Surv(PFS,PFS_event==1)~Total_PointsäºŒåˆ†ç±»,data=traindata_with_points)
 
 testdata_with_points<-read.table("testdata with points.csv",header = T,sep=",")
-KMtest<-survfit(Surv(PFS,PFS_event)~Total_Points¶ş·ÖÀà,data=testdata_with_points)
-KMdiff<-survdiff(Surv(PFS,PFS_event==1)~Total_Points¶ş·ÖÀà,data=testdata_with_points)
-#7.2 »æÖÆK-MÇúÏß£¨low-risk group vs high-risk group)
+KMtest<-survfit(Surv(PFS,PFS_event)~Total_PointsäºŒåˆ†ç±»,data=testdata_with_points)
+KMdiff<-survdiff(Surv(PFS,PFS_event==1)~Total_PointsäºŒåˆ†ç±»,data=testdata_with_points)
+#7.2 ç»˜åˆ¶K-Mæ›²çº¿ï¼ˆlow-risk group vs high-risk group)
 library(survminer)
 ggsurvplot(KM,legend.labs=c("low-risk group","high-risk group"), data = traindata_with_points)
 ggsurvplot(KMtest,legend.labs=c("low-risk group","high-risk group"), data = testdata_with_points)
 
-#Table 3µÄ¼ÆËã
-t.test(Total_Points~Total_Points¶ş·ÖÀà,data=traindata_with_points)
-sd(traindata_with_points$Total_Points[which(traindata_with_points$Total_Points¶ş·ÖÀà==1)])
+#Table 3çš„è®¡ç®—
+t.test(Total_Points~Total_PointsäºŒåˆ†ç±»,data=traindata_with_points)
+sd(traindata_with_points$Total_Points[which(traindata_with_points$Total_PointsäºŒåˆ†ç±»==1)])
