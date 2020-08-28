@@ -1,13 +1,13 @@
 library(plyr)
 library(pROC)
-setwd("F:\\radiomics\\meningioma\\patients data\\RÓïÑÔ logistic½¨Ä£")
+setwd("F:\\radiomics\\meningioma\\patients data\\Rè¯­è¨€ logisticå»ºæ¨¡")
 train<-read.csv(file="train.csv")
 test<-read.csv(file = "test.csv")
 train<-train[,-1]
 test<-test[,-1]
-#ÅúÁ¿µ¥ÒòËØlogstic»Ø¹é
+#æ‰¹é‡å•å› ç´ logsticå›žå½’
 Unilogistic.result<-function(x){
-  FML<-as.formula(paste0("ÖÊµØ~",x))
+  FML<-as.formula(paste0("è´¨åœ°~",x))
   unilogistic<-glm(FML,family = binomial(link = logit),data = train)
   unilogistic.sum<-summary(unilogistic)
   pvalue<-unilogistic.sum$coefficients[2,4]
@@ -17,28 +17,28 @@ Unilogistic.result<-function(x){
 varnames<-colnames(train)[-1]
 Unilogsitic<-lapply(varnames,Unilogistic.result)
 Unilogsitic<-ldply(Unilogsitic,data.frame)
-#É¸Ñ¡pÐ¡ÓÚ0.05µÄ±äÁ¿
+#ç­›é€‰på°äºŽ0.05çš„å˜é‡
 f<-Unilogsitic$characteristics[Unilogsitic$pvalue<0.05]
-#¶àÒòËØlogistic»Ø¹é
-FML<-as.formula(paste0("ÖÊµØ~",paste0(f,collapse = "+")))
+#å¤šå› ç´ logisticå›žå½’
+FML<-as.formula(paste0("è´¨åœ°~",paste0(f,collapse = "+")))
 Multilogistic<-glm(FML,family=binomial(link = logit),data=train)
 logit.step<-step(Multilogistic,direction = "backward")
 summary(logit.step)
-#×îÖÕlogisticÄ£ÐÍ
-logit.final<-glm(ÖÊµØ ~ T1c_wavelet.HHH_firstorder_Maximum + T2_log.sigma.3.0.mm.3D_firstorder_Mean + 
+#æœ€ç»ˆlogisticæ¨¡åž‹
+logit.final<-glm(è´¨åœ° ~ T1c_wavelet.HHH_firstorder_Maximum + T2_log.sigma.3.0.mm.3D_firstorder_Mean + 
                      T2_wavelet.LHL_firstorder_Median + T2_wavelet.HLL_glcm_Correlation + 
                      T2flair_original_glrlm_LongRunHighGrayLevelEmphasis + ADC_wavelet.LHL_firstorder_Skewness + 
                      ADC_wavelet.HLL_firstorder_Skewness + ADC_wavelet.HLH_firstorder_Median + 
                      ADC_wavelet.HLH_firstorder_Skewness, family = binomial(link = logit), 
                    data = train)
-#AUC¼ÆËã
+#AUCè®¡ç®—
 prob<-predict(logit.final,type = c("response"))
 train$prob<-prob
-AUC.train<-auc(train$ÖÊµØ,train$prob)
+AUC.train<-auc(train$è´¨åœ°,train$prob)
 
 prob.test<-predict(logit.final,type = c("response"),newdata = test)
 test$prob<-prob.test
-AUC.test<-auc(test$ÖÊµØ,test$prob)
-#ROCÇúÏß»æÖÆ
-ROC<-roc(ÖÊµØ~prob,data = train)
+AUC.test<-auc(test$è´¨åœ°,test$prob)
+#ROCæ›²çº¿ç»˜åˆ¶
+ROC<-roc(è´¨åœ°~prob,data = train)
 plot(ROC)
