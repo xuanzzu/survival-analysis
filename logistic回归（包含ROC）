@@ -1,0 +1,83 @@
+library(plyr)
+library(pROC)
+library(ggplot2)
+library(foreign)
+library(survival)
+library(rms)
+setwd("E:\\meningioma\\R语言 logistic建模")
+train<-read.csv(file="train.csv")
+test<-read.csv(file = "test.csv")
+train<-train[,-1]
+test<-test[,-1]
+
+#绘制Radscore柱状图
+train$质地<-factor(train$质地,
+                 levels = c(0,1),
+                 labels = c("Soft","Firm"))
+ggplot(data = train,aes(x=reorder(number,Radscore),y=Radscore,fill=as.factor(train$质地)))+
+  geom_col()+xlab("Patients")+ylab("Radiomics signatures")+labs(fill="Consistency")+
+  theme(axis.text.x=element_blank())
+#批量单因素logstic回归
+Unilogistic.result<-function(x){
+  FML<-as.formula(paste0("质地~",x))
+  unilogistic<-glm(FML,family = binomial(link = logit),data = train)
+  unilogistic.sum<-summary(unilogistic)
+  pvalue<-round(unilogistic.sum$coefficients[2,4],3)
+  OR<-round(exp(coef(unilogistic))[2],3)
+  CI1<-round(exp(confint(unilogistic))[2,1],3)
+  CI2<-round(exp(confint(unilogistic))[2,2],3)
+  unilogistic.result<-data.frame("characteristics"=x,"OR"=OR,"CI"=paste0(CI1,"-",CI2),"pvalue"=pvalue)
+  return(unilogistic.result)
+}
+varnames<-colnames(train)[-1:-2]
+Unilogsitic<-lapply(varnames,Unilogistic.result)
+Unilogsitic<-ldply(Unilogsitic,data.frame)
+#筛选p小于0.05的变量
+f<-Unilogsitic$characteristics[Unilogsitic$pvalue<0.05]
+#多因素logistic回归
+FML<-as.formula(paste0("质地~",paste0(f,collapse = "+")))
+Multilogistic<-glm(FML,family=binomial(link = logit),data=train)
+logit.step<-step(Multilogistic,direction = "backward")
+summary(logit.step)
+#最终logistic模型
+logit.final<-glm(质地 ~ Radiomics.signature, family = binomial(link = logit), 
+                   data = train)
+#AUC计算
+prob<-predict(logit.final,type = c("response"))
+train$prob<-prob
+AUC.train<-auc(train$质地,train$prob)
+
+prob.test<-predict(logit.final,type = c("response"),newdata = test)
+test$prob<-prob.test
+AUC.test<-auc(test$质地,test$prob)
+#ROC曲线绘制
+ROC<-roc(质地~prob,data = train)
+plot(ROC,print.auc=TRUE,auc.polygon=TRUE,print.thres=TRUE)
+#绘制列线图
+dd <- datadist(train)
+options(datadist='dd')
+
+fit<-lrm(质地~Radiomics.signature,data = train,x=T,y=T)
+
+nom<-nomogram(fit,
+               fun=function(x)1/(1+exp(-x)),
+               lp=F,
+               fun.at = c(0.1,0.3,0.5,0.7,0.9),
+               funlabel = 'Probability of Consistency')
+plot(nom)
+
+#计算C指数（C-index=1-C）
+validate(fit,method = "boot",B=1000,dxy = T)
+rcorrcens(质地~predict(fit),data = train)
+
+validate(fit.test,method = "boot",B=1000,dxy = T)
+rcorrcens(质地~predict(fit.test),data = test)
+
+#calibrate曲线
+cal<-calibrate(fit,method = 'boot',B=1000)
+plot(cal,xlim = c(0,1.0),ylim = c(0,1.0),xlab = "Predicted Pr{Consistency=Firm}")
+
+valpro<-predict(fit,type = "response",newdata=test)#根据模型计算验证组预测概率
+fit.test<-lrm(质地~valpro,data = test,x=T,y=T)#验证组根据预测概率建立回归方程
+cal.test<-calibrate(fit.test,method = 'boot',B=1000)
+plot(cal.test,xlim = c(0,1.0),ylim = c(0,1.0),xlab = "Predicted Pr{Consistency=Firm}")
